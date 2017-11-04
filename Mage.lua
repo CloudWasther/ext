@@ -335,7 +335,6 @@ function Rotation:Combat ()
 		Rotation.Combo = 0;
 
 		--Improved Scorch
-		--local ImprovedScorchTalent = Talent(2, 4, 1):Rank() > 0;
 		if IsOptionEnabled("Improved Scorch") and ImprovedScorchTalent and (Target:DebuffCount(Scorch) < 5 or Rotation.ScorchDebuffExpire-GetTime() < 7) and not Player:IsMoving() and Target:CanCast(Scorch) then
 			Target:Cast(Scorch);
 			return;
