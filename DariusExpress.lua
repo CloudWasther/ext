@@ -174,7 +174,7 @@ function SetMovement(bool)
 end
 
 class "Darius"
-local Scriptname,Version,Author,LVersion = "DariusExpress","v1.0","Tocsin","7.17"
+local Scriptname,Version,Author,LVersion = "DariusExpress","v1.0","Tocsin","8.5"
 
 function CurrentTarget(range)
 	if _G.SDK then
@@ -235,7 +235,7 @@ function Darius:LoadMenu()
 	self.Menu.ClearMode:MenuElement({id = "UseW", name = "W: Crippling Strike", value = true})
 	self.Menu.ClearMode:MenuElement({id = "clearActive", name = "Clear key", key = string.byte("V")})
 
-	self.Menu:MenuElement({id = "CustomSpellCast", name = "Use custom spellcast", tooltip = "Can fix some casting problems with wrong directions and so", value = true})
+	self.Menu:MenuElement({id = "CustomSpellCast", name = "Use custom spellcast", tooltip = "Can fix some WTF problems with wrong directions", value = true})
 	self.Menu:MenuElement({id = "delay", name = "Custom spellcast delay", value = 100, min = 0, max = 200, step = 5,tooltip = "increase this one if spells is going completely wrong direction", identifier = ""})
 	
 	self.Menu:MenuElement({id = "blank", type = SPACE , name = ""})
