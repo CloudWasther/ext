@@ -166,7 +166,7 @@ function SetMovement(bool)
 	end
 end
 class "Kindred"
-local Scriptname,Version,Author,LVersion = "KindredExpress","v1.0","Tocsin","8.5"
+local Scriptname,Version,Author,LVersion = "KindredExpress","v1.1","Tocsin","8.5"
 function CurrentTarget(range)
 	if _G.SDK then
 		return _G.SDK.TargetSelector:GetTarget(range, _G.SDK.DAMAGE_TYPE_PHYSICAL);
@@ -322,6 +322,22 @@ function Kindred:Draw()
 		end	
 	end
 end
+function Kindred:PunkAss(target)
+	local target = target or (_G.SDK and _G.SDK.TargetSelector:GetTarget(1000, _G.SDK.DAMAGE_TYPE_PHYSICAL)) or (_G.GOS and _G.GOS:GetTarget(E.range,"AD"))
+	local punk = myHero.dir.x * target.dir.x + myHero.dir.z * target.dir.z
+	if (punk < 0) then
+		if (myHero.dir.x > 0 and myHero.dir.z > 0) then
+			return ((target.pos.x - myHero.pos.x > 0) and (target.pos.z - myHero.pos.z > 0))
+		elseif (myHero.dir.x < 0 and myHero.dir.z < 0) then
+			return ((target.pos.x - myHero.pos.x < 0) and (target.pos.z - myHero.pos.z < 0))
+		elseif (myHero.dir.x > 0 and myHero.dir.z < 0) then
+			return ((target.pos.x - myHero.pos.x > 0) and (target.pos.z - myHero.pos.z < 0))
+		elseif (myHero.dir.x < 0 and myHero.dir.z > 0) then
+			return ((target.pos.x - myHero.pos.x < 0) and (target.pos.z - myHero.pos.z > 0))
+		end
+	end
+	return false
+end
 function Kindred:CastSpell(spell,pos)
 	local customcast = self.Menu.CustomSpellCast:Value()
 	if not customcast then
@@ -347,37 +363,35 @@ function Kindred:CastSpell(spell,pos)
 end
 function Kindred:Combo()
 	if (not _G.SDK and not _G.GOS) then return end
-	local target = target or (_G.SDK and _G.SDK.TargetSelector:GetTarget(E.range, _G.SDK.DAMAGE_TYPE_PHYSICAL)) or (_G.GOS and _G.GOS:GetTarget(E.range,"AD"))
+	local target = target or (_G.SDK and _G.SDK.TargetSelector:GetTarget(1000, _G.SDK.DAMAGE_TYPE_PHYSICAL)) or (_G.GOS and _G.GOS:GetTarget(E.range,"AD"))
 	if target and target.type == "AIHeroClient" then
-	if self:CanCast(_Q) and self.Menu.ComboMode.UseQ:Value() and myHero.attackData.state == STATE_WINDDOWN then
-            local c1, c2, r1, r2 = Vector(myHero.pos), Vector(target.pos), myHero.range, 800 
-            local O1, O2 = CircleCircleIntersection(c1, c2, r1, r2) 
-            if O1 or O2 and target.pos:DistanceTo(myHero.pos) < Q.range then
-                local pos = c1:Extended(Vector(ClosestToMouse(O1, O2)), 425)
-				self:CastSpell(HK_Q, pos)
-				Control.Attack(target)
-            end
-	end
-	if self:CanCast(_W) and self.Menu.ComboMode.UseW:Value() and not self:CanCast(_Q) then
+		if self:CanCast(_Q) and self.Menu.ComboMode.UseQ:Value() then
+            if target.pos:DistanceTo(myHero.pos) > 600 then
+				self:CastSpell(HK_Q, target)
+			elseif target.pos:DistanceTo(myHero.pos) < 600 then
+				Control.CastSpell(HK_Q)
+			end
+		end
+		if self:CanCast(_W) and self.Menu.ComboMode.UseW:Value() and not self:CanCast(_Q) then
 			if target.pos:DistanceTo(myHero.pos) < 500 then
 			Control.CastSpell(HK_W, target)
 			end
-	end
-	if self:CanCast(_E) and self.Menu.ComboMode.UseE:Value() and target.pos:DistanceTo(myHero.pos) < E.range then
-		Control.CastSpell(HK_E, target)
-	end
+		end
+		if self:CanCast(_E) and self.Menu.ComboMode.UseE:Value() and target.pos:DistanceTo(myHero.pos) < E.range then
+			Control.CastSpell(HK_E, target)
+		end
 
-    if self:CanCast(_R) and self.Menu.ComboMode.UseR:Value() then -- Should leave off auto..great to burn enemy cd's tho
+    	if self:CanCast(_R) and self.Menu.ComboMode.UseR:Value() then -- Should leave off auto..great to burn enemy cd's tho
             if myHero.health/myHero.maxHealth < .20 and myHero.pos:DistanceTo(target.pos) < 500 then
 			    Control.CastSpell(HK_R)
             end
-    end
+    	end
 
-    if self:EnemyInRange(400) and not self:CanCast(_Q) then -- used twice so stays I guess
+    	if self:EnemyInRange(400) and not self:CanCast(_Q) then -- used twice so stays I guess
             if myHero.pos:DistanceTo(target.pos) < 400 then
 			    UseBotrk()
             end
-	end
+		end
 	end
 end
 function Kindred:GetEnemyHeroes()
@@ -401,16 +415,14 @@ function Kindred:EnemyInRange(range)
 end
 function Kindred:Harass()
 	if (not _G.SDK and not _G.GOS) then return end
-	local target = target or (_G.SDK and _G.SDK.TargetSelector:GetTarget(Q.range, _G.SDK.DAMAGE_TYPE_PHYSICAL)) or (_G.GOS and _G.GOS:GetTarget(Q.range,"AD"))
+	local target = target or (_G.SDK and _G.SDK.TargetSelector:GetTarget(1000, _G.SDK.DAMAGE_TYPE_PHYSICAL)) or (_G.GOS and _G.GOS:GetTarget(Q.range,"AD"))
 	if target and target.type == "AIHeroClient" then
-	if self:CanCast(_Q) and self.Menu.HarassMode.UseQ:Value() and myHero.attackData.state == STATE_WINDDOWN then
-            local c1, c2, r1, r2 = Vector(myHero.pos), Vector(target.pos), myHero.range, 800 
-            local O1, O2 = CircleCircleIntersection(c1, c2, r1, r2) 
-            if O1 or O2 then
-                local pos = c1:Extended(Vector(ClosestToMouse(O1, O2)), 425)
-				self:CastSpell(HK_Q, pos)
-				Control.Attack(target)
-            end
+	if self:CanCast(_Q) and self.Menu.HarassMode.UseQ:Value() then
+		if target.pos:DistanceTo(myHero.pos) > 600 then
+			self:CastSpell(HK_Q, target)
+		elseif target.pos:DistanceTo(myHero.pos) < 595 then	
+			Control.CastSpell(HK_Q)
+		end
 	end
 	if self:CanCast(_W) and self.Menu.HarassMode.UseW:Value() and not self:CanCast(_Q) then
 		if target.pos:DistanceTo(myHero.pos) < W.range then
