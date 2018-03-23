@@ -166,7 +166,7 @@ function SetMovement(bool)
 	end
 end
 class "Kindred"
-local Scriptname,Version,Author,LVersion = "KindredExpress","v1.2","Tocsin","8.5"
+local Scriptname,Version,Author,LVersion = "KindredExpress","v1.3","Tocsin","8.6"
 function CurrentTarget(range)
 	if _G.SDK then
 		return _G.SDK.TargetSelector:GetTarget(range, _G.SDK.DAMAGE_TYPE_PHYSICAL);
@@ -220,6 +220,10 @@ function Kindred:LoadMenu()
 	self.Menu.ClearMode:MenuElement({id = "UseW", name = "W: Wolf's Frenzy", value = true})
 	self.Menu.ClearMode:MenuElement({id = "UseE", name = "E: Mounting Dread", value = false})
 	self.Menu.ClearMode:MenuElement({id = "clearActive", name = "Clear key", key = string.byte("V")})
+	self.Menu:MenuElement({id = "ALevel", name = "Auto Level up", type = MENU})
+	self.Menu.ALevel:MenuElement({id = "Enabled", name = "Auto Level Up", value = true})
+	self.Menu.ALevel:MenuElement({id = "Block", name = "Block Auto Level Until 2", value = true})
+	self.Menu.ALevel:MenuElement({id = "Order", name = "Leveler Sequence", drop = {"[Q] - [W] - [E] > Max [Q]","[Q] - [E] - [W] > Max [Q]","[W] - [Q] - [E] > Max [W]","[W] - [E] - [Q] > Max [W]","[E] - [Q] - [W] > Max [E]","[E] - [W] - [Q] > Max [E]"}})
 	self.Menu:MenuElement({id = "CustomSpellCast", name = "Use custom spellcast", tooltip = "Not needed here", value = true})
 	self.Menu:MenuElement({id = "delay", name = "Custom spellcast delay", value = 75, min = 0, max = 200, step = 5,tooltip = "bah, your gonna break it", identifier = ""})
 	self.Menu:MenuElement({id = "blank", type = SPACE , name = ""})
@@ -265,6 +269,7 @@ function Kindred:Tick()
 	if self.Menu.ClearMode.clearActive:Value() then
 		self:Jungle()
 	end
+	self:Levelme()
 end
 function Kindred:HasBuff(unit, buffname)
 	for i = 0, unit.buffCount do
@@ -274,6 +279,37 @@ function Kindred:HasBuff(unit, buffname)
 		end
 	end
 	return false
+end
+function Kindred:Levelme() 
+    if self.Menu.ALevel.Enabled:Value() == false then return end
+    local Sequence = {
+		[1] = { HK_Q, HK_W, HK_E, HK_Q, HK_Q, HK_R, HK_Q, HK_W, HK_Q, HK_W, HK_R, HK_W, HK_W, HK_E, HK_E, HK_R, HK_E, HK_E },
+		[2] = { HK_Q, HK_E, HK_W, HK_Q, HK_Q, HK_R, HK_Q, HK_E, HK_Q, HK_E, HK_R, HK_E, HK_E, HK_W, HK_W, HK_R, HK_W, HK_W },
+		[3] = { HK_W, HK_Q, HK_E, HK_W, HK_W, HK_R, HK_W, HK_Q, HK_W, HK_Q, HK_R, HK_Q, HK_Q, HK_E, HK_E, HK_R, HK_E, HK_E },
+		[4] = { HK_W, HK_E, HK_Q, HK_W, HK_W, HK_R, HK_W, HK_E, HK_W, HK_E, HK_R, HK_E, HK_E, HK_Q, HK_Q, HK_R, HK_Q, HK_Q },
+		[5] = { HK_E, HK_Q, HK_W, HK_E, HK_E, HK_R, HK_E, HK_Q, HK_E, HK_Q, HK_R, HK_Q, HK_Q, HK_W, HK_W, HK_R, HK_W, HK_W },
+		[6] = { HK_E, HK_W, HK_Q, HK_E, HK_E, HK_R, HK_E, HK_W, HK_E, HK_W, HK_R, HK_W, HK_W, HK_Q, HK_Q, HK_R, HK_Q, HK_Q },
+    }
+    local Slot = nil
+    local Tick = 0
+    local SkillPoints = myHero.levelData.lvl - (myHero:GetSpellData(_Q).level + myHero:GetSpellData(_W).level + myHero:GetSpellData(_E).level + myHero:GetSpellData(_R).level)
+    local level = myHero.levelData.lvl
+    local Check = Sequence[self.Menu.ALevel.Order:Value()][level - SkillPoints + 1]
+    if SkillPoints > 0 then
+        if self.Menu.ALevel.Block:Value() and level == 1 then return end
+        if GetTickCount() - Tick > 1200 and Check ~= nil then
+            Control.KeyDown(HK_LUS)
+            Control.KeyDown(Check)
+            Slot = Check
+            Tick = GetTickCount()
+        end
+    end
+    if Control.IsKeyDown(HK_LUS) then
+        Control.KeyUp(HK_LUS)
+    end
+    if Slot and Control.IsKeyDown(Slot) then
+        Control.KeyUp(Slot)
+    end
 end
 function Kindred:IsReady(spell)
 	return Game.CanUseSpell(spell) == 0
@@ -353,7 +389,7 @@ function Kindred:Combo()
             local c1, c2, r1, r2 = Vector(myHero.pos), Vector(target.pos), myHero.range, 800 
             local O1, O2 = CircleCircleIntersection(c1, c2, r1, r2) 
             if O1 or O2 and target.pos:DistanceTo(myHero.pos) < Q.range then
-                local pos = c1:Extended(Vector(ClosestToMouse(O1, O2)), 425)
+                local pos = c1:Extended(Vector(ClosestToMouse(O1, O2)), 420)
 				self:CastSpell(HK_Q, pos)
 				--Control.Attack(target)
             end
@@ -407,7 +443,7 @@ function Kindred:Harass()
             local c1, c2, r1, r2 = Vector(myHero.pos), Vector(target.pos), myHero.range, 800 
             local O1, O2 = CircleCircleIntersection(c1, c2, r1, r2) 
             if O1 or O2 then
-                local pos = c1:Extended(Vector(ClosestToMouse(O1, O2)), 425)
+                local pos = c1:Extended(Vector(ClosestToMouse(O1, O2)), 420)
 				self:CastSpell(HK_Q, pos)
 				--Control.Attack(target)
             end
@@ -433,7 +469,7 @@ function Kindred:Jungle()
             local c1, c2, r1, r2 = Vector(myHero.pos), Vector(minion.pos), myHero.range, 700 
             local O1, O2 = CircleCircleIntersection(c1, c2, r1, r2) 
             if O1 or O2 then
-                local pos = c1:Extended(Vector(ClosestToMouse(O1, O2)), 425)
+                local pos = c1:Extended(Vector(ClosestToMouse(O1, O2)), 420)
 				self:CastSpell(HK_Q, pos)
 				Control.Attack(minion)
 			end
