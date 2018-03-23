@@ -183,7 +183,7 @@ function SetMovement(bool)
 end
 
 class "Aatrox"
-local Scriptname,Version,Author,LVersion = "AatroxExpress","v1.1","Tocsin","8.5"
+local Scriptname,Version,Author,LVersion = "AatroxExpress","v1.2","Tocsin","8.6"
 
 function CurrentTarget(range)
 	if _G.SDK then
@@ -215,9 +215,9 @@ function Aatrox:__init()
 end
 
 function Aatrox:LoadSpells()
-	Q = {Range = 700, Width = 100, Delay = 0.60, Speed = 1300, Collision = false, aoe = true, Type = "circular"}
+	Q = {Range = 700, Width = 200, Delay = 0.60, Speed = 800, Collision = false, aoe = true, Type = "circular"}
 	W = {Range = 150}
-	E = {Range = 1000, Width = 80, Delay = 0.25, Speed = 1500, Collision = false, aoe = false, Type = "line"}
+	E = {Range = 1000, Width = 100, Delay = 0.25, Speed = 1200, Collision = false, aoe = false, Type = "line"}
 	R = {Range = 500, Width = 160, Delay = 0.25}
 end
 
@@ -235,11 +235,13 @@ function Aatrox:LoadMenu()
 	self.Menu:MenuElement({id = "HarassMode", name = "Harass", type = MENU})
 	self.Menu.HarassMode:MenuElement({id = "UseQ", name = "Q: Dark Flight", value = true})
 	self.Menu.HarassMode:MenuElement({id = "UseW", name = "W: Blood Thirst / Blood Price", value = true})
+	self.Menu.HarassMode:MenuElement({id = "WHealth", name = "Health % to use Blood Thirst", value = 70, min = 0, max = 100, step = 1})
 	self.Menu.HarassMode:MenuElement({id = "UseE", name = "E: Blades of Torment", value = true})
 	self.Menu.HarassMode:MenuElement({id = "harassActive", name = "Harass key", key = string.byte("C")})
 	self.Menu:MenuElement({id = "ClearMode", name = "Clear", type = MENU})
 	self.Menu.ClearMode:MenuElement({id = "UseQ", name = "Q: Dark Flight", value = true})
 	self.Menu.ClearMode:MenuElement({id = "UseW", name = "W: Blood Thirst / Blood Price", value = true})
+	self.Menu.ClearMode:MenuElement({id = "WHealth", name = "Health % to use Blood Thirst", value = 70, min = 0, max = 100, step = 1})
 	self.Menu.ClearMode:MenuElement({id = "UseE", name = "E: Blades of Torment", value = true})
 	self.Menu.ClearMode:MenuElement({id = "clearActive", name = "Clear key", key = string.byte("V")})
 	self.Menu:MenuElement({id = "CustomSpellCast", name = "Use custom spellcast", tooltip = "Can fix some wtf problems with wrong directions", value = true})
@@ -395,14 +397,14 @@ function Aatrox:Combo()
 
     if self:CanCast(_E) and target.pos:DistanceTo(myHero.pos) < E.Range and self.Menu.ComboMode.UseE:Value() then 
 		local castpos,HitChance, pos = TPred:GetBestCastPosition(target, E.Delay , E.Width, E.Range,E.Speed, myHero.pos, E.ignorecol, E.Type )
-		if (HitChance > 0 ) then
+		if (HitChance >= 1 ) then
 			self:CastSpell(HK_E,castpos)
 		end
 	end
 
 	if self:CanCast(_Q) and target.pos:DistanceTo(myHero.pos) < Q.Range and self.Menu.ComboMode.UseQ:Value() then           
         local castpos,HitChance, pos = TPred:GetBestCastPosition(target, Q.Delay , Q.Width, Q.Range,Q.Speed, myHero.pos, Q.ignorecol, Q.Type )
-		if (HitChance > 0 ) then
+		if (HitChance >= 1 ) then
 			self:CastSpell(HK_Q,castpos)
 		end
 	end
@@ -469,20 +471,20 @@ function Aatrox:Harass()
 
     if self:CanCast(_E) and target.pos:DistanceTo(myHero.pos) < E.Range and self.Menu.HarassMode.UseE:Value() then  
 		local castpos,HitChance, pos = TPred:GetBestCastPosition(target, E.Delay , E.Width, E.Range,E.Speed, myHero.pos, E.ignorecol, E.Type )
-		if (HitChance > 0 ) then
+		if (HitChance > 1 ) then
 			self:CastSpell(HK_E,castpos)
 		end
 	end
 
 	if self:CanCast(_Q) and target.pos:DistanceTo(myHero.pos) < Q.Range and self.Menu.HarassMode.UseQ:Value() then           
         local castpos,HitChance, pos = TPred:GetBestCastPosition(target, Q.Delay , Q.Width, Q.Range,Q.Speed, myHero.pos, Q.ignorecol, Q.Type )
-		if (HitChance > 0 ) then
+		if (HitChance > 1 ) then
 			self:CastSpell(HK_Q,castpos)
 		end
 	end
 
 	if self:CanCast(_W) and target.pos:DistanceTo(myHero.pos) < W.Range and self.Menu.HarassMode.UseW:Value() then 
-		if myHero:GetSpellData(_W).toggleState == 2 and (myHero.health/myHero.maxHealth < self.Menu.ComboMode.WHealth:Value() / 100 ) then
+		if myHero:GetSpellData(_W).toggleState == 2 and (myHero.health/myHero.maxHealth < self.Menu.HarassMode.WHealth:Value() / 100 ) then
 			Control.CastSpell(HK_W)
 		end
     end
@@ -519,7 +521,7 @@ function Aatrox:Jungle()
     
         if self:CanCast(_W) and myHero.pos:DistanceTo(minion.pos) < 150 then 
             if self.Menu.ClearMode.UseW:Value() and minion then
-                if self:EnemyInRange(150) and myHero:GetSpellData(_W).toggleState == 2 and myHero.health/myHero.maxHealth < .50 then
+                if myHero:GetSpellData(_W).toggleState == 2 and (myHero.health/myHero.maxHealth < self.Menu.ClearMode.WHealth:Value() / 100 ) then
                     Control.CastSpell(HK_W)
                 end
             end
