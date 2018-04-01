@@ -183,7 +183,7 @@ function SetMovement(bool)
 end
 
 class "Aatrox"
-local Scriptname,Version,Author,LVersion = "AatroxExpress","v1.2","Tocsin","8.6"
+local Scriptname,Version,Author,LVersion = "AatroxExpress","v1.3","Tocsin","8.6"
 
 function CurrentTarget(range)
 	if _G.SDK then
@@ -200,7 +200,7 @@ function Aatrox:__init()
 	self:LoadSpells()
 	self:LoadMenu()
 	Callback.Add("Tick", function() self:Tick() end)
-	Callback.Add("Draw", function() self:Draw() end)
+	--Callback.Add("Draw", function() self:Draw() end)    ---fraking draw lags
 	local orbwalkername = ""
 	if _G.SDK then
 		orbwalkername = "IC'S orbwalker"		
@@ -244,8 +244,8 @@ function Aatrox:LoadMenu()
 	self.Menu.ClearMode:MenuElement({id = "WHealth", name = "Health % to use Blood Thirst", value = 70, min = 0, max = 100, step = 1})
 	self.Menu.ClearMode:MenuElement({id = "UseE", name = "E: Blades of Torment", value = true})
 	self.Menu.ClearMode:MenuElement({id = "clearActive", name = "Clear key", key = string.byte("V")})
-	self.Menu:MenuElement({id = "CustomSpellCast", name = "Use custom spellcast", tooltip = "Can fix some wtf problems with wrong directions", value = true})
-	self.Menu:MenuElement({id = "delay", name = "Custom spellcast delay", value = 100, min = 0, max = 200, step = 5,tooltip = "increase this one if spells is going completely wrong direction", identifier = ""})
+	self.Menu:MenuElement({id = "CustomSpellCast", name = "Use custom spellcast", tooltip = "Can fix wtf problems with wrong directions", value = true})
+	self.Menu:MenuElement({id = "delay", name = "Custom spellcast delay", value = 100, min = 0, max = 200, step = 5,tooltip = "increase this if spells are going completely wrong direction", identifier = ""})
 	self.Menu:MenuElement({id = "blank", type = SPACE , name = ""})
 	self.Menu:MenuElement({id = "blank", type = SPACE , name = "Script Ver: "..Version.. " - LoL Ver: "..LVersion.. ""})
 	self.Menu:MenuElement({id = "blank", type = SPACE , name = "by "..Author.. ""})
@@ -302,9 +302,8 @@ function IsRecalling()
 	return false
 end
 
-function ValidTarget(target, range)
-	range = range and range or math.huge
-	return target ~= nil and target.valid and target.visible and not target.dead and target.distance <= range
+function ValidTarget(target)
+	return target.isEnemy and target.alive and target.visible and target.isTargetable
 end
 
 function Aatrox:Tick()
@@ -387,9 +386,10 @@ end
 
 function Aatrox:Combo()
 	if (not _G.SDK and not _G.GOS) then return end
-	local target = target or (_G.SDK and _G.SDK.TargetSelector:GetTarget(E.Range, _G.SDK.DAMAGE_TYPE_PHYSICAL)) or (_G.GOS and _G.GOS:GetTarget(E.Range,"AD"))
-	if target and target.type == "AIHeroClient" then
-    if self.Menu.ComboMode.UseHYDRA:Value() and target.pos:DistanceTo(myHero.pos) < 150 then
+	local target = target or (_G.SDK and _G.SDK.TargetSelector:GetTarget(900, _G.SDK.DAMAGE_TYPE_PHYSICAL)) or (_G.GOS and _G.GOS:GetTarget(E.Range,"AD"))
+	if not target then return end	
+	if ValidTarget(target) and target.type == "AIHeroClient" then
+		if self.Menu.ComboMode.UseHYDRA:Value() and target.pos:DistanceTo(myHero.pos) < 150 then
         if myHero.attackData.state == STATE_WINDDOWN and not self:CanCast(_Q) then
             UseHydra()
         end
@@ -397,7 +397,7 @@ function Aatrox:Combo()
 
     if self:CanCast(_E) and target.pos:DistanceTo(myHero.pos) < E.Range and self.Menu.ComboMode.UseE:Value() then 
 		local castpos,HitChance, pos = TPred:GetBestCastPosition(target, E.Delay , E.Width, E.Range,E.Speed, myHero.pos, E.ignorecol, E.Type )
-		if (HitChance >= 1 ) then
+		if (HitChance >= 2 ) then
 			self:CastSpell(HK_E,castpos)
 		end
 	end
@@ -461,8 +461,9 @@ end
 
 function Aatrox:Harass()
 	if (not _G.SDK and not _G.GOS) then return end
-	local target = target or (_G.SDK and _G.SDK.TargetSelector:GetTarget(E.Range, _G.SDK.DAMAGE_TYPE_PHYSICAL)) or (_G.GOS and _G.GOS:GetTarget(E.Range,"AD"))
-	if target and target.type == "AIHeroClient" then
+	local target = target or (_G.SDK and _G.SDK.TargetSelector:GetTarget(900, _G.SDK.DAMAGE_TYPE_PHYSICAL)) or (_G.GOS and _G.GOS:GetTarget(E.Range,"AD"))
+	if not target then return end	
+	if ValidTarget(target) and target.type == "AIHeroClient" then
     if self.Menu.ComboMode.UseHYDRA:Value() and target.pos:DistanceTo(myHero.pos) < 150 then
         if myHero.attackData.state == STATE_WINDDOWN and not self:CanCast(_Q) then
             UseHydra()
@@ -497,25 +498,44 @@ function Aatrox:Harass()
 	end
 end
 
+
+function Aatrox:GetMinionFarm(range)
+    local target
+    for j = 1,Game.MinionCount() do
+        local minion = Game.Minion(j)
+        if self:IsValidMinion(minion, range) and minion.team ~= myHero.team then
+            target = minion
+            break
+        end
+    end
+    return target
+end
+
+function Aatrox:IsValidMinion(obj, spellRange)
+    return obj ~= nil and obj.valid and obj.visible and not obj.dead and obj.isTargetable and obj.distance <= spellRange
+end
+
+
+
 function Aatrox:Jungle()
-	for i = 1, Game.MinionCount() do
-	local minion = Game.Minion(i)
-    if minion and minion.team == 300 or minion.team ~= myHero.team then
+	minion = self:GetMinionFarm(700)
+	if not minion then return end
+
         if self.Menu.ComboMode.UseHYDRA:Value() and minion then
             if myHero.attackData.state == STATE_WINDDOWN and not self:CanCast(_Q) then
                 UseHydraminion()
             end
         end
     
-        if self:CanCast(_E) and myHero.pos:DistanceTo(minion.pos) < 500 then 
-            if self.Menu.ClearMode.UseE:Value() and minion then
-                self:CastSpell(HK_E,minion)
+        if self:CanCast(_E) and myHero.pos:DistanceTo(minion.pos) < E.Range then 
+            if self.Menu.ClearMode.UseE:Value() and minion and minion:GetCollision(E.Width, E.Speed, E.Speed) >= 1 then
+				self:CastSpell(HK_E,minion)
             end
         end
     
-        if self:CanCast(_Q) and myHero.pos:DistanceTo(minion.pos) < 500 then 
-            if self.Menu.ClearMode.UseQ:Value() and minion then           
-                self:CastSpell(HK_Q,minion)
+        if self:CanCast(_Q) and myHero.pos:DistanceTo(minion.pos) < Q.Range then 
+            if self.Menu.ClearMode.UseQ:Value() and minion and minion:GetCollision(Q.Width, Q.Speed, Q.Speed) >= 1 then           
+				self:CastSpell(HK_Q,minion)
             end
         end
     
@@ -534,8 +554,7 @@ function Aatrox:Jungle()
                 end
             end
         end
-	end
-	end
+
 end
 
 function OnLoad()
